@@ -1,4 +1,7 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { db, auth } from "../firebase/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 // initialize the context
 
@@ -12,6 +15,26 @@ export const UserAuth = () => {
 
 export default function AuthContextProvider({ children }) {
   const [isLoggedOut, setIsLoggedOut] = useState(true);
+  const [user, setUser] = useState(null);
 
-  return <UserContext.Provider value={{ isLoggedOut }}>{children}</UserContext.Provider>;
+  // check if user is loggedin to update the auth
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setIsLoggedOut(false);
+        onSnapshot(doc(db, "users", currentUser.uid), (doc) => {
+          setUser(doc.data());
+        });
+        // console.log("it is running");
+      } else {
+        setIsLoggedOut(true);
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  });
+
+  return <UserContext.Provider value={{ isLoggedOut, user }}>{children}</UserContext.Provider>;
 }
